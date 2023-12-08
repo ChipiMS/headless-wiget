@@ -46,13 +46,23 @@
   getOrganizationTypes
 </button>
 <button id="get-site" (click)="getSite()">getSite</button>
-<button id="connect-site-v1" (click)="siteConnection(1)">
-  siteConnection(v1)
-</button>
-<button id="connect-site-v3" (click)="siteConnection(3)">
-  siteConnection(v3)
-</button>
+<button id="connect-site-v1" (click)="siteConnection()">siteConnection</button>
 <button id="sync-credential" (click)="syncCredential()">syncCredential</button>
-<button id="headless-twofa" (click)="twofa()">twofa</button>
+<button id="headless-twofa" (click)="testTwofa()">twofa</button>
 
+<ng-container *ngIf="credentials">
+  <h2>Credentials</h2>
+  {{ credentials | json }}<br />
+  <textarea [(ngModel)]="credentialsData" rows="4" cols="200"></textarea><br />
+  <button (click)="sendCredentials()">Send credentials</button>
+</ng-container>
+
+<ng-container *ngIf="twofaFields">
+  <h2>Twofa</h2>
+  {{ twofaFields | json }}<br />
+  <textarea [(ngModel)]="twofaData" rows="4" cols="200"></textarea><br />
+  <button (click)="sendTwofa()">Send twofa</button>
+</ng-container>
+
+<h2>Respuestas</h2>
 {{ headlessResults | json }}

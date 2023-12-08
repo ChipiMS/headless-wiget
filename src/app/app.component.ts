@@ -1,17 +1,24 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterOutlet } from '@angular/router';
 import * as SyncfyWidget from '@syncfy/authentication-widget';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, FormsModule, RouterOutlet],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
+  public credentials: string;
+  public credentialsData;
   public headlessResults: any[] = [];
+  public twofaData;
+  public twofaFields;
+  private site;
+  private twofa;
 
   public getCountries() {
     const { locale, token } = this.getInputs();
@@ -66,106 +73,65 @@ export class AppComponent {
       });
   }
 
-  public siteConnection(version) {
-    const { locale, quickAnswer, socketTimeout, token } = this.getInputs();
+  public sendCredentials() {
+    const data = JSON.parse(this.credentialsData);
+    if (this.site.version === 1) {
+      this.site.connect(data);
+    } else {
+      this.site.connect(0, data);
+    }
+  }
+
+  public sendTwofa() {
+    const data = JSON.parse(this.twofaData);
+    this.twofa.authenticate(data);
+  }
+
+  public siteConnection() {
+    const { locale, quickAnswer, socketTimeout, token } = this.getInputs(),
+      id_site = (document.getElementById('id-site') as HTMLInputElement).value;
     SyncfyWidget.headless
-      .siteConnection(
-        { token },
-        version === 1
-          ? {
-              id_site: '56cf5728784806f72b8b4568',
-              id_site_type: '5b285177056f2911c13dbce1',
-              is_business: 1,
-              is_personal: 1,
-              version: 1,
-              name: 'Normal (Simple Auth)',
-              credentials: [
-                {
-                  name: 'username',
-                  required: true,
-                  type: 'text',
-                  label: 'User',
-                  validation: null,
-                  token: false,
-                },
-                {
-                  name: 'password',
-                  required: true,
-                  type: 'password',
-                  label: 'Password',
-                  validation: null,
-                  token: false,
-                },
-              ],
-              endpoint: '/v1/credentials',
-            }
-          : {
-              id_site: '5ae37e06056f290607126264',
-              id_site_type: '5b285177056f2911c13dbce2',
-              is_business: 1,
-              is_personal: 1,
-              version: 3,
-              name: 'Acme Documents (v3)',
-              input: [
-                {
-                  name: 'Default',
-                  label: 'Default',
-                  fields: [
-                    {
-                      name: 'reference',
-                      required: true,
-                      type: 'text',
-                      label: 'Referencia',
-                      validation: null,
-                    },
-                    {
-                      name: 'contract',
-                      required: true,
-                      type: 'text',
-                      label: 'Contrato',
-                      validation: null,
-                    },
-                  ],
-                },
-              ],
-              endpoint: '/v1/jobs',
-            },
-        { locale, quickAnswer, socketTimeout }
-      )
-      .then((site) => {
-        this.displayHeadlessResult(site.version);
-        setTimeout(() => {
-          if (version === 3) {
-            this.displayHeadlessResult(site.getOptions());
-          }
-        }, 1000);
-        setTimeout(() => {
-          if (version === 1) {
-            this.displayHeadlessResult(site.getFields());
-          } else {
-            this.displayHeadlessResult(site.getFields(0));
-          }
-        }, 2000);
-        setTimeout(() => {
-          if (version === 1) {
-            site.connect({ username: 'test', password: 'test' });
-          } else {
-            site.connect(0, { reference: 'test', contract: 'test' });
-          }
-        }, 3000);
-        site.on('twofa', () => {
-          this.displayHeadlessResult(site.twofa.getFields());
-          site.twofa.authenticate({ token: 'test' });
-        });
-        site.on('socket-message', (data) => {
-          this.displayHeadlessResult(data);
-        });
-        site.on('socket-quick-answer', () => {
-          this.displayHeadlessResult('Quick answer');
-        });
-        site.on('socket-timeout', () => {
-          this.displayHeadlessResult('Socket timeout');
-        });
+      .getSite({ token }, id_site, { locale })
+      .then((apiSite) => {
+        SyncfyWidget.headless
+          .siteConnection({ token }, apiSite, {
+            locale,
+            quickAnswer,
+            socketTimeout,
+          })
+          .then((site) => {
+            const version = site.version;
+            this.site = site;
+            this.displayHeadlessResult(site);
+            this.displayHeadlessResult(site.version);
+            setTimeout(() => {
+              if (version === 3) {
+                this.displayHeadlessResult(site.getOptions());
+              }
+            }, 1000);
+            setTimeout(() => {
+              if (version === 1) {
+                this.displayCredentials(site.getFields());
+              } else {
+                this.displayCredentials(site.getFields(0));
+              }
+            }, 2000);
+            site.on('twofa', () => {
+              this.displayTwofa(site.twofa);
+            });
+            site.on('socket-message', (data) => {
+              this.displayHeadlessResult(data);
+            });
+            site.on('socket-quick-answer', () => {
+              this.displayHeadlessResult('Quick answer');
+            });
+            site.on('socket-timeout', () => {
+              this.displayHeadlessResult('Socket timeout');
+            });
+          });
+      })
+      .catch((error) => {
+        this.displayHeadlessResult(error);
       });
   }
 
@@ -185,8 +151,7 @@ export class AppComponent {
           this.displayHeadlessResult(credential.getCredentialData());
         });
         credential.on('twofa', () => {
-          this.displayHeadlessResult(credential.twofa.getFields());
-          credential.twofa.authenticate({ token: 'test' });
+          this.displayTwofa(credential.twofa);
         });
         credential.on('socket-message', (data) => {
           this.displayHeadlessResult(data);
@@ -200,62 +165,66 @@ export class AppComponent {
       });
   }
 
-  public twofa() {
-    const { locale, quickAnswer, socketTimeout, token } = this.getInputs();
+  public testTwofa() {
+    const { locale, token } = this.getInputs(),
+      id_site = (document.getElementById('id-site') as HTMLInputElement).value;
     SyncfyWidget.headless
-      .siteConnection(
-        { token },
-        {
-          id_site: '56cf5728784806f72b8b4568',
-          id_site_type: '5b285177056f2911c13dbce1',
-          is_business: 1,
-          is_personal: 1,
-          version: 1,
-          name: 'Normal (Simple Auth)',
-          credentials: [
-            {
-              name: 'username',
-              required: true,
-              type: 'text',
-              label: 'User',
-              validation: null,
-              token: false,
-            },
-            {
-              name: 'password',
-              required: true,
-              type: 'password',
-              label: 'Password',
-              validation: null,
-              token: false,
-            },
-          ],
-          endpoint: '/v1/credentials',
-        },
-        { locale, quickAnswer: true, socketTimeout }
-      )
-      .then((site) => {
-        site.connect({ username: 'test', password: 'test' });
-        site.on('socket-message', (data) => {
-          if (data.code === 410) {
-            SyncfyWidget.headless
-              .twofa({ token }, data, { locale })
-              .then((twofa) => {
-                this.displayHeadlessResult(twofa.getFields());
-                twofa.authenticate({ token: 'test' });
-              });
-          }
-        });
-        site.on('socket-quick-answer', () => {
-          this.displayHeadlessResult(
-            'Institution connected successfully with twofa'
-          );
-        });
+      .getSite({ token }, id_site, { locale })
+      .then((apiSite) => {
+        SyncfyWidget.headless
+          .siteConnection({ token }, apiSite, {
+            locale,
+            quickAnswer: true,
+          })
+          .then((site) => {
+            const version = site.version;
+            if (version === 1) {
+              this.displayCredentials(site.getFields());
+            } else {
+              this.displayCredentials(site.getFields(0));
+            }
+            site.on('socket-message', (data) => {
+              if (data.code === 410) {
+                SyncfyWidget.headless
+                  .twofa({ token }, data, { locale })
+                  .then((twofa) => {
+                    this.displayTwofa(twofa);
+                  });
+              }
+            });
+            site.on('socket-quick-answer', () => {
+              this.displayHeadlessResult(
+                'Institution connected successfully with twofa'
+              );
+            });
+          });
+      })
+      .catch((error) => {
+        this.displayHeadlessResult(error);
       });
+  }
+
+  private displayCredentials(result: any) {
+    this.credentials = result;
+    this.credentialsData = JSON.stringify(
+      result.reduce((object, field) => {
+        return { ...object, [field.name]: '' };
+      }, {})
+    );
   }
 
   private displayHeadlessResult(result: any) {
     this.headlessResults.push(result);
+  }
+
+  private displayTwofa(twofa: any) {
+    this.twofa = twofa;
+    this.twofaFields = twofa.getFields();
+    this.twofaData = JSON.stringify(
+      this.twofaFields.reduce((object, field) => {
+        return { ...object, [field.name]: '' };
+      }, {})
+    );
   }
 
   private getInputs() {
