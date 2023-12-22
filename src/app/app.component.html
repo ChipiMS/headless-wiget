@@ -61,8 +61,10 @@
   <h2>Twofa</h2>
   {{ twofaFields | json }}<br />
   <textarea [(ngModel)]="twofaData" rows="4" cols="200"></textarea><br />
-  <button (click)="sendTwofa()">Send twofa</button>
+  <button *ngIf="showTwofaButton" (click)="sendTwofa()">Send twofa</button>
 </ng-container>
 
 <h2>Respuestas</h2>
-{{ headlessResults | json }}
+<div *ngFor="let headlessResult of headlessResults">
+  {{ headlessResult | json }}
+</div>

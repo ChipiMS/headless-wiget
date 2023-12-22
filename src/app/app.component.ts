@@ -17,6 +17,7 @@ export class AppComponent {
   public headlessResults: any[] = [];
   public twofaData;
   public twofaFields;
+  public showTwofaButton: boolean;
   private site;
   private twofa;
 
@@ -178,6 +179,7 @@ export class AppComponent {
           })
           .then((site) => {
             const version = site.version;
+            this.site = site;
             if (version === 1) {
               this.displayCredentials(site.getFields());
             } else {
@@ -186,7 +188,7 @@ export class AppComponent {
             site.on('socket-message', (data) => {
               if (data.code === 410) {
                 SyncfyWidget.headless
-                  .twofa({ token }, data, { locale })
+                  .twofa({ token }, data, id_site, { locale })
                   .then((twofa) => {
                     this.displayTwofa(twofa);
                   });
@@ -214,11 +216,12 @@ export class AppComponent {
   }
 
   private displayHeadlessResult(result: any) {
-    this.headlessResults.push(result);
+    this.headlessResults.unshift(result);
   }
 
   private displayTwofa(twofa: any) {
     this.twofa = twofa;
+    this.showTwofaButton = twofa.displaySubmitButton();
     this.twofaFields = twofa.getFields();
     this.twofaData = JSON.stringify(
       this.twofaFields.reduce((object, field) => {
