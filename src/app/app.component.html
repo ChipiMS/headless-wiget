@@ -49,6 +49,8 @@
 <button id="connect-site-v1" (click)="siteConnection()">siteConnection</button>
 <button id="sync-credential" (click)="syncCredential()">syncCredential</button>
 <button id="headless-twofa" (click)="testTwofa()">twofa</button>
+<button (click)="openRegularWidget()">Open regular widget</button>
+<div id="widget"></div>
 
 <ng-container *ngIf="credentials">
   <h2>Credentials</h2>

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterOutlet } from '@angular/router';
-import * as SyncfyWidget from '@syncfy/authentication-widget';
+import SyncfyWidget from '@syncfy/authentication-widget';
 
 @Component({
   selector: 'app-root',
@@ -72,6 +72,18 @@ export class AppComponent {
       .catch((error) => {
         this.displayHeadlessResult(error);
       });
+  }
+
+  public openRegularWidget() {
+    const { locale, token } = this.getInputs(),
+      widget = new SyncfyWidget({
+        token,
+        element: '#widget',
+        config: {
+          ...(locale ? { locale } : {}),
+        },
+      });
+    widget.open();
   }
 
   public sendCredentials() {
@@ -221,13 +233,21 @@ export class AppComponent {
 
   private displayTwofa(twofa: any) {
     this.twofa = twofa;
-    this.showTwofaButton = twofa.displaySubmitButton();
+    this.showTwofaButton = twofa.displaySubmitButton;
     this.twofaFields = twofa.getFields();
     this.twofaData = JSON.stringify(
       this.twofaFields.reduce((object, field) => {
         return { ...object, [field.name]: '' };
       }, {})
     );
+    this.twofa.on('token-received', () => {
+      this.twofaFields = twofa.getFields();
+      this.twofaData = JSON.stringify(
+        this.twofaFields.reduce((object, field) => {
+          return { ...object, [field.name]: '' };
+        }, {})
+      );
+    });
   }
 
   private getInputs() {
