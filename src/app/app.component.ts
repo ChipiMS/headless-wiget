@@ -244,7 +244,7 @@ export class AppComponent {
       this.twofaFields = twofa.getFields();
       this.twofaData = JSON.stringify(
         this.twofaFields.reduce((object, field) => {
-          return { ...object, [field.name]: '' };
+          return { ...object, [field.name]: this.twofa.data[field.name] };
         }, {})
       );
     });
